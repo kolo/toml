@@ -19,11 +19,12 @@ const (
 	tokKey
 	tokString
 	tokInt
+	tokFloat
 	tokDate
+	tokArray
 	tokAssignmentOperator
 	tokLeftBracket
 	tokRightBracket
-	tokSpace
 )
 
 type token struct {
@@ -51,7 +52,6 @@ func newToken(tokenType int, r rune, value valueFunc) (t *token, err error) {
 
 type lexer struct {
 	scanner *bufio.Scanner
-	atEOF   bool
 }
 
 func (l *lexer) nextToken() (t *token, err error) {
@@ -60,13 +60,18 @@ func (l *lexer) nextToken() (t *token, err error) {
 		return nil, nil
 	}
 
+	for isSpace(r) || r == '\n'{
+		r = l.next()
+		if r == eof {
+			return nil, nil
+		}
+	}
+
 	switch r {
 	case '#':
 		t, err = newToken(tokComment, r, l.commentValue)
 	case '[':
 		t, err = newToken(tokKeyGroup, r, l.keyGroupValue)
-	case ' ', '\t':
-		t, err = newToken(tokSpace, r, selfValue)
 	case '=':
 		t, err = newToken(tokAssignmentOperator, r, selfValue)
 	case '"':
@@ -96,12 +101,6 @@ func (l *lexer) next() rune {
 	r, _ := utf8.DecodeRune(l.scanner.Bytes())
 
 	return r
-}
-
-func (l *lexer) scan(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	l.atEOF = atEOF
-	advance, token, err = bufio.ScanRunes(data, atEOF)
-	return
 }
 
 func (l *lexer) commentValue(rune) (string, error) {
@@ -225,10 +224,14 @@ func (l *lexer) intValue(c rune) (string, error) {
 
 	for {
 		r := l.next()
-		if r == ' ' || r == '\n' || r == eof {
+		if isSpace(r) || r == '\n' || r == eof {
 			break
 		}
-		buf.WriteRune(r)
+		if unicode.IsDigit(r) {
+			buf.WriteRune(r)
+		} else {
+			return "", errors.New("mailformed integer value")
+		}
 	}
 
 	return buf.String(), nil
@@ -241,20 +244,22 @@ func (l *lexer) omitLineReminder() error {
 		if r == '\n' || r == eof {
 			break
 		}
-		if r != ' ' && r != '\t' {
+		if !isSpace(r) {
 			return errors.New("unexpected character at the end of the line")
 		}
 	}
 	return nil
 }
 
+func isSpace(r rune) bool {
+	return r == ' ' || r == '\t'
+}
+
 func newLexer(r io.Reader) (l *lexer) {
-	l = &lexer{
-		atEOF: false,
-	}
+	l = &lexer{}
 
 	scanner := bufio.NewScanner(r)
-	scanner.Split(l.scan)
+	scanner.Split(bufio.ScanRunes)
 	l.scanner = scanner
 
 	return
