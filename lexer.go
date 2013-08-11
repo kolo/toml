@@ -34,6 +34,14 @@ func selfValue(r rune) (string, error) {
 	return string(r), nil
 }
 
+func trueValue(rune) (string, error) {
+	return "true", nil
+}
+
+func falseValue(rune) (string, error) {
+	return "false", nil
+}
+
 type lexer struct {
 	scanner   *bufio.Scanner
 	lastToken *token
@@ -59,9 +67,13 @@ func (l *lexer) nextToken() (t *token, err error) {
 			t, err = l.newToken(tokString, r, l.stringValue)
 		default:
 			if unicode.IsLetter(r) {
-				t, err = l.newToken(tokKey, r, l.keyValue)
+				if l.lastToken != nil && l.lastToken.tokenType == tokAssignmentOperator {
+					t, err = l.newBooleanToken(r)
+				} else {
+					t, err = l.newToken(tokKey, r, l.keyValue)
+				}
 			} else if unicode.IsDigit(r) {
-				t, err = l.newToken(tokNumeric, r, l.numericValue)
+				t, err = l.newToken(tokNumeric, r, l.value)
 			} else {
 				err = errors.New("unexpected token")
 			}
@@ -97,6 +109,22 @@ func (l *lexer) newToken(tokenType int, r rune, value valueFunc) (t *token, err 
 	l.lastToken = t
 
 	return
+}
+
+func (l *lexer) newBooleanToken(r rune) (t *token, err error) {
+	v, err := l.value(r)
+	if err != nil {
+		return nil, err
+	}
+
+	switch v {
+	case "true":
+		return l.newToken(tokTrue, r, trueValue)
+	case "false":
+		return l.newToken(tokFalse, r, falseValue)
+	default:
+		return nil, errors.New("unknown value type")
+	}
 }
 
 func (l *lexer) commentValue(rune) (string, error) {
@@ -214,7 +242,7 @@ func (l *lexer) stringValue(rune) (string, error) {
 	return buf.String(), nil
 }
 
-func (l *lexer) numericValue(c rune) (string, error) {
+func (l *lexer) value(c rune) (string, error) {
 	var buf bytes.Buffer
 	buf.WriteRune(c)
 

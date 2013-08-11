@@ -95,6 +95,10 @@ func (p *parser) keyValue(key string) (interface{}, error) {
 	switch tok.tokenType {
 	case tokNumeric:
 		return numericValue(tok.value)
+	case tokTrue:
+		return true, nil
+	case tokFalse:
+		return false, nil
 	default:
 		return tok.value, nil
 	}

@@ -17,6 +17,8 @@ title = "TOML Example"
 
 [user]
 name = "Tom Jones"
+enabled = true
+verified = false
 
 	[github]
 	nickname = "TJ"
@@ -39,6 +41,8 @@ func Test_parseGroupsExample(t *testing.T) {
 		{"title", "TOML Example"},
 		{"user.name", "Tom Jones"},
 		{"user.github.nickname", "TJ"},
+		{"user.enabled", true},
+		{"user.verified", false},
 	}
 
 	testParser(t, strings.NewReader(Groups), tests)
@@ -60,7 +64,7 @@ func testParser(t *testing.T, r io.Reader, tests parserTests) {
 
 	for _, tt := range tests {
 		if p.tree[tt.key] != tt.value {
-			t.Errorf("%s is %v, though expected %s", tt.key, p.tree[tt.key], tt.value)
+			t.Errorf("%s is %v, though expected %v", tt.key, p.tree[tt.key], tt.value)
 		}
 	}
 }
