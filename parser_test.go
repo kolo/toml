@@ -6,19 +6,39 @@ import (
 	"testing"
 )
 
-const ValuesOnly = `
+const Keys = `
 title = "TOML Example"
 
 pool = 5
 `
 
-func Test_parseExample(t *testing.T) {
+const Groups = `
+title = "TOML Example"
+
+[user]
+name = "Tom Jones"
+
+	[github]
+	nickname = "TJ"
+`
+
+func Test_parseKeysExample(t *testing.T) {
 	tests := parserTests{
 		{"title", "TOML Example"},
 		{"pool", "5"},
 	}
 
-	testParser(t, strings.NewReader(ValuesOnly), tests)
+	testParser(t, strings.NewReader(Keys), tests)
+}
+
+func Test_parseGroupsExample(t *testing.T) {
+	tests := parserTests {
+		{"title", "TOML Example"},
+		{"user.name", "Tom Jones"},
+		{"user.github.nickname", "TJ"},
+	}
+
+	testParser(t, strings.NewReader(Groups), tests)
 }
 
 type parserTests []struct{
@@ -37,7 +57,7 @@ func testParser(t *testing.T, r io.Reader, tests parserTests) {
 
 	for _, tt := range tests {
 		if p.tree[tt.key] != tt.value {
-			t.Errorf("%s is %s, though expected %s", tt.key, p.tree[tt.key], tt.value)
+			t.Errorf("%s is %v, though expected %s", tt.key, p.tree[tt.key], tt.value)
 		}
 	}
 }

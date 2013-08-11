@@ -13,18 +13,16 @@ const eof = -(iota + 1)
 
 const (
 	tokError = iota
-	tokEOF
-	tokComment
 	tokKeyGroup
 	tokKey
 	tokString
 	tokInt
+	tokTrue
+	tokFalse
 	tokFloat
 	tokDate
 	tokArray
 	tokAssignmentOperator
-	tokLeftBracket
-	tokRightBracket
 )
 
 type token struct {
@@ -38,56 +36,42 @@ func selfValue(r rune) (string, error) {
 	return string(r), nil
 }
 
-func newToken(tokenType int, r rune, value valueFunc) (t *token, err error) {
-	t = new(token)
-	t.tokenType = tokenType
-	t.value, err = value(r)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return
-}
-
 type lexer struct {
-	scanner *bufio.Scanner
+	scanner   *bufio.Scanner
+	lastToken *token
 }
 
 func (l *lexer) nextToken() (t *token, err error) {
-	r := l.next()
-	if r == eof {
-		return nil, nil
-	}
-
-	for isSpace(r) || r == '\n'{
-		r = l.next()
+	for {
+		r := l.next()
 		if r == eof {
 			return nil, nil
 		}
-	}
 
-	switch r {
-	case '#':
-		t, err = newToken(tokComment, r, l.commentValue)
-	case '[':
-		t, err = newToken(tokKeyGroup, r, l.keyGroupValue)
-	case '=':
-		t, err = newToken(tokAssignmentOperator, r, selfValue)
-	case '"':
-		t, err = newToken(tokString, r, l.stringValue)
-	default:
-		if unicode.IsLetter(r) {
-			t, err = newToken(tokKey, r, l.keyValue)
-		} else if unicode.IsDigit(r) {
-			t, err = newToken(tokInt, r, l.intValue)
-		} else {
-			err = errors.New("unexpected token")
+		switch r {
+		case ' ', '\t', '\n':
+			// Skip
+		case '#':
+			l.omitLineReminder()
+		case '[':
+			t, err = l.newToken(tokKeyGroup, r, l.keyGroupValue)
+		case '=':
+			t, err = l.newToken(tokAssignmentOperator, r, selfValue)
+		case '"':
+			t, err = l.newToken(tokString, r, l.stringValue)
+		default:
+			if unicode.IsLetter(r) {
+				t, err = l.newToken(tokKey, r, l.keyValue)
+			} else if unicode.IsDigit(r) {
+				t, err = l.newToken(tokInt, r, l.intValue)
+			} else {
+				err = errors.New("unexpected token")
+			}
 		}
-	}
 
-	if err != nil {
-		return nil, err
+		if err != nil || t != nil {
+			break
+		}
 	}
 
 	return
@@ -102,6 +86,21 @@ func (l *lexer) next() rune {
 
 	return r
 }
+
+func (l *lexer) newToken(tokenType int, r rune, value valueFunc) (t *token, err error) {
+	t = new(token)
+	t.tokenType = tokenType
+	t.value, err = value(r)
+
+	if err != nil {
+		return nil, err
+	}
+
+	l.lastToken = t
+
+	return
+}
+
 
 func (l *lexer) commentValue(rune) (string, error) {
 	var buf bytes.Buffer

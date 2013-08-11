@@ -3,11 +3,13 @@ package toto
 import (
 	"errors"
 	"io"
+	"strings"
 )
 
 type parser struct {
-	lexer *lexer
-	tree  map[string]interface{}
+	lexer    *lexer
+	tree     map[string]interface{}
+	keygroup string
 }
 
 func (p *parser) run() (err error) {
@@ -18,6 +20,7 @@ func (p *parser) run() (err error) {
 		if err != nil {
 			return err
 		}
+
 		if tok == nil {
 			// EOF reached
 			break
@@ -29,9 +32,42 @@ func (p *parser) run() (err error) {
 			if err != nil {
 				return err
 			}
-			p.tree[tok.value] = value
+			p.setKey(tok.value, value)
+		case tokKeyGroup:
+			err = p.setKeyGroup(tok.value)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
+	return nil
+}
+
+func (p *parser) setKey(k string, v string) {
+	if p.keygroup != "" {
+		k = strings.Join([]string{p.keygroup, k}, ".")
+	}
+	p.tree[k] = v
+}
+
+func (p *parser) setKeyGroup(keygroup string) error {
+	if p.keygroup != "" {
+		keygroup = strings.Join([]string{p.keygroup, keygroup}, ".")
+	}
+
+	keys := strings.Split(keygroup, ".")
+	subkey := ""
+	for _, k := range keys {
+		if p.tree[k] != nil {
+			return errors.New("invalid keygroup")
+		}
+		if subkey != "" {
+			subkey = strings.Join([]string{subkey, k}, ".")
+		}
+	}
+
+	p.keygroup = keygroup
 
 	return nil
 }
@@ -64,7 +100,7 @@ func isValueToken(t *token) bool {
 func newParser(r io.Reader) *parser {
 	return &parser{
 		lexer: newLexer(r),
-		tree: make(map[string]interface{}),
+		tree:  make(map[string]interface{}),
 	}
 }
 

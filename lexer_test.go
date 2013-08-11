@@ -5,10 +5,6 @@ import (
 	"testing"
 )
 
-func Test_readComment(t *testing.T) {
-	testToken(t, "# This is comment.", tokComment, " This is comment.")
-}
-
 func Test_readKeyGroup(t *testing.T) {
 	testToken(t, "[key.subkey]", tokKeyGroup, "key.subkey")
 }
