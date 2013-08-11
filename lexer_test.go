@@ -19,8 +19,8 @@ func Test_readString(t *testing.T) {
 }
 
 func Test_readInt(t *testing.T) {
-	testToken(t, "42 ", tokInt, "42")
-	testToken(t, "42 \n", tokInt, "42")
+	testToken(t, "42 ", tokNumeric, "42")
+	testToken(t, "42.5 \n", tokNumeric, "42.5")
 }
 
 func testToken(t *testing.T, src string, tokenType int, expected string) {

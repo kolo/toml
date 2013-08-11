@@ -23,9 +23,12 @@ name = "Tom Jones"
 `
 
 func Test_parseKeysExample(t *testing.T) {
+	var i int64
+	i = 5
+
 	tests := parserTests{
 		{"title", "TOML Example"},
-		{"pool", "5"},
+		{"pool", i},
 	}
 
 	testParser(t, strings.NewReader(Keys), tests)
@@ -43,7 +46,7 @@ func Test_parseGroupsExample(t *testing.T) {
 
 type parserTests []struct{
 	key string
-	value string
+	value interface{}
 }
 
 func testParser(t *testing.T, r io.Reader, tests parserTests) {

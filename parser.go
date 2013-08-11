@@ -3,7 +3,10 @@ package toto
 import (
 	"errors"
 	"io"
+	"regexp"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type parser struct {
@@ -44,7 +47,7 @@ func (p *parser) run() (err error) {
 	return nil
 }
 
-func (p *parser) setKey(k string, v string) {
+func (p *parser) setKey(k string, v interface{}) {
 	if p.keygroup != "" {
 		k = strings.Join([]string{p.keygroup, k}, ".")
 	}
@@ -72,7 +75,7 @@ func (p *parser) setKeyGroup(keygroup string) error {
 	return nil
 }
 
-func (p *parser) keyValue(key string) (string, error) {
+func (p *parser) keyValue(key string) (interface{}, error) {
 	tok, err := p.lexer.nextToken()
 	if err != nil {
 		return "", err
@@ -89,12 +92,33 @@ func (p *parser) keyValue(key string) (string, error) {
 		return "", errors.New("invalid key assignment")
 	}
 
-	return tok.value, nil
+	switch tok.tokenType {
+	case tokNumeric:
+		return numericValue(tok.value)
+	default:
+		return tok.value, nil
+	}
 }
 
 func isValueToken(t *token) bool {
-	return t.tokenType == tokString || t.tokenType == tokInt ||
-		t.tokenType == tokFloat || t.tokenType == tokDate
+	return t.tokenType == tokString || t.tokenType == tokNumeric ||
+		t.tokenType == tokTrue || t.tokenType == tokFalse || t.tokenType == tokArray
+}
+
+var intValue = regexp.MustCompile(`[0-9]+`)
+var floatValue = regexp.MustCompile(`[0-9]+.[0-9]+`)
+var iso8601 = "2006-01-02T15:04:05Z"
+
+func numericValue(v string) (interface{}, error) {
+	if intValue.MatchString(v) {
+		return strconv.ParseInt(v, 10, 64)
+	}
+
+	if floatValue.MatchString(v) {
+		return strconv.ParseFloat(v, 64)
+	}
+
+	return time.Parse(iso8601, v)
 }
 
 func newParser(r io.Reader) *parser {

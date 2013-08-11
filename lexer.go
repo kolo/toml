@@ -16,11 +16,9 @@ const (
 	tokKeyGroup
 	tokKey
 	tokString
-	tokInt
+	tokNumeric
 	tokTrue
 	tokFalse
-	tokFloat
-	tokDate
 	tokArray
 	tokAssignmentOperator
 )
@@ -63,7 +61,7 @@ func (l *lexer) nextToken() (t *token, err error) {
 			if unicode.IsLetter(r) {
 				t, err = l.newToken(tokKey, r, l.keyValue)
 			} else if unicode.IsDigit(r) {
-				t, err = l.newToken(tokInt, r, l.intValue)
+				t, err = l.newToken(tokNumeric, r, l.numericValue)
 			} else {
 				err = errors.New("unexpected token")
 			}
@@ -100,7 +98,6 @@ func (l *lexer) newToken(tokenType int, r rune, value valueFunc) (t *token, err 
 
 	return
 }
-
 
 func (l *lexer) commentValue(rune) (string, error) {
 	var buf bytes.Buffer
@@ -217,7 +214,7 @@ func (l *lexer) stringValue(rune) (string, error) {
 	return buf.String(), nil
 }
 
-func (l *lexer) intValue(c rune) (string, error) {
+func (l *lexer) numericValue(c rune) (string, error) {
 	var buf bytes.Buffer
 	buf.WriteRune(c)
 
@@ -226,11 +223,7 @@ func (l *lexer) intValue(c rune) (string, error) {
 		if isSpace(r) || r == '\n' || r == eof {
 			break
 		}
-		if unicode.IsDigit(r) {
-			buf.WriteRune(r)
-		} else {
-			return "", errors.New("mailformed integer value")
-		}
+		buf.WriteRune(r)
 	}
 
 	return buf.String(), nil
