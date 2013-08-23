@@ -3,7 +3,7 @@ package toto
 import (
 	"bufio"
 	"bytes"
-	"errors"
+	"fmt"
 	"io"
 	"unicode"
 	"unicode/utf8"
@@ -21,11 +21,23 @@ const (
 	tokFalse
 	tokArray
 	tokAssignmentOperator
+	tokLeftBracket
+	tokRightBracket
+	tokComma
 )
 
 type token struct {
 	tokenType int
 	value     string
+}
+
+type lexError struct {
+	line int
+	msg  string
+}
+
+func (l *lexError) Error() string {
+	return fmt.Sprintf("Error at line %d: %s", l.line, l.msg)
 }
 
 type valueFunc func(rune) (string, error)
@@ -43,8 +55,15 @@ func falseValue(rune) (string, error) {
 }
 
 type lexer struct {
-	scanner   *bufio.Scanner
-	lastToken *token
+	scanner    *bufio.Scanner
+	lastToken  *token
+	curLine    int
+	assignment bool
+	mem        rune
+}
+
+func (l *lexer) err(msg string) error {
+	return &lexError{line: l.curLine, msg: msg}
 }
 
 func (l *lexer) nextToken() (t *token, err error) {
@@ -58,16 +77,24 @@ func (l *lexer) nextToken() (t *token, err error) {
 		case ' ', '\t', '\n':
 			// Skip
 		case '#':
-			l.omitLineReminder()
+			l.skipLine()
 		case '[':
-			t, err = l.newToken(tokKeyGroup, r, l.keyGroupValue)
+			if l.lastToken != nil && l.assignment {
+				t, err = l.newToken(tokLeftBracket, r, selfValue)
+			} else {
+				t, err = l.newToken(tokKeyGroup, r, l.keyGroupValue)
+			}
+		case ']':
+			t, err = l.newToken(tokRightBracket, r, selfValue)
+		case ',':
+			t, err = l.newToken(tokComma, r, selfValue)
 		case '=':
 			t, err = l.newToken(tokAssignmentOperator, r, selfValue)
 		case '"':
 			t, err = l.newToken(tokString, r, l.stringValue)
 		default:
 			if unicode.IsLetter(r) {
-				if l.lastToken != nil && l.lastToken.tokenType == tokAssignmentOperator {
+				if l.lastToken != nil && l.assignment {
 					t, err = l.newBooleanToken(r)
 				} else {
 					t, err = l.newToken(tokKey, r, l.keyValue)
@@ -75,7 +102,7 @@ func (l *lexer) nextToken() (t *token, err error) {
 			} else if unicode.IsDigit(r) {
 				t, err = l.newToken(tokNumeric, r, l.value)
 			} else {
-				err = errors.New("unexpected token")
+				err = l.err("unexpected token")
 			}
 		}
 
@@ -88,11 +115,19 @@ func (l *lexer) nextToken() (t *token, err error) {
 }
 
 func (l *lexer) next() rune {
+	if l.mem != 0 {
+		r := l.mem
+		l.mem = 0
+		return r
+	}
 	ok := l.scanner.Scan()
 	if !ok {
 		return eof
 	}
 	r, _ := utf8.DecodeRune(l.scanner.Bytes())
+	if r == '\n' {
+		l.curLine += 1
+	}
 
 	return r
 }
@@ -123,22 +158,8 @@ func (l *lexer) newBooleanToken(r rune) (t *token, err error) {
 	case "false":
 		return l.newToken(tokFalse, r, falseValue)
 	default:
-		return nil, errors.New("unknown value type")
+		return nil, l.err("unknown value type")
 	}
-}
-
-func (l *lexer) commentValue(rune) (string, error) {
-	var buf bytes.Buffer
-
-	for {
-		r := l.next()
-		if r == '\n' || r == eof {
-			break
-		}
-		buf.WriteRune(r)
-	}
-
-	return buf.String(), nil
 }
 
 func (l *lexer) keyGroupValue(rune) (string, error) {
@@ -152,7 +173,7 @@ func (l *lexer) keyGroupValue(rune) (string, error) {
 		r := l.next()
 		if newKey {
 			if !unicode.IsLetter(r) {
-				return "", errors.New("invalid keygroup")
+				return "", l.err("invalid keygroup")
 			}
 			newKey = false
 			buf.WriteRune(r)
@@ -210,7 +231,7 @@ func (l *lexer) stringValue(rune) (string, error) {
 			break
 		}
 		if r == '\n' || r == eof {
-			err = errors.New("unexpected end of line")
+			err = l.err("unexpected end of line")
 			break
 		}
 		if escaped {
@@ -219,7 +240,7 @@ func (l *lexer) stringValue(rune) (string, error) {
 				escaped = false
 				buf.WriteRune(r)
 			} else {
-				err = errors.New("unknown escape sequence")
+				err = l.err("unknown escape sequence")
 				break
 			}
 		} else {
@@ -234,11 +255,6 @@ func (l *lexer) stringValue(rune) (string, error) {
 		return "", err
 	}
 
-	err = l.omitLineReminder()
-	if err != nil {
-		return "", err
-	}
-
 	return buf.String(), nil
 }
 
@@ -248,6 +264,10 @@ func (l *lexer) value(c rune) (string, error) {
 
 	for {
 		r := l.next()
+		if r == ',' || r == ']' {
+			l.mem = r
+			break
+		}
 		if isSpace(r) || r == '\n' || r == eof {
 			break
 		}
@@ -255,6 +275,15 @@ func (l *lexer) value(c rune) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+func (l *lexer) skipLine() {
+	for {
+		r := l.next()
+		if r == '\n' || r == eof {
+			break
+		}
+	}
 }
 
 func (l *lexer) omitLineReminder() error {
@@ -265,7 +294,7 @@ func (l *lexer) omitLineReminder() error {
 			break
 		}
 		if !isSpace(r) {
-			return errors.New("unexpected character at the end of the line")
+			return l.err("unexpected character at the end of the line")
 		}
 	}
 	return nil
@@ -276,7 +305,7 @@ func isSpace(r rune) bool {
 }
 
 func newLexer(r io.Reader) (l *lexer) {
-	l = &lexer{}
+	l = &lexer{curLine: 1}
 
 	scanner := bufio.NewScanner(r)
 	scanner.Split(bufio.ScanRunes)

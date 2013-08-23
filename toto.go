@@ -1,6 +1,7 @@
 package toto
 
 import (
+	"log"
 	"os"
 )
 
@@ -12,6 +13,12 @@ func (c *Conf) String(key string) string {
 	return c.values[key].(string)
 }
 
+func newConf() *Conf {
+	return &Conf{
+		values: make(map[string]interface{}),
+	}
+}
+
 func Parse(path string) (conf *Conf, err error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -19,11 +26,13 @@ func Parse(path string) (conf *Conf, err error) {
 	}
 	defer f.Close()
 
-	conf = new(Conf)
+	conf = newConf()
 	err = parse(f, conf)
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("%v\n", conf.values)
 
 	return
 }
