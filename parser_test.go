@@ -20,7 +20,7 @@ name = "Tom Jones"
 enabled = true
 verified = false
 
-	[github]
+	[user.github]
 	nickname = "TJ"
 `
 
@@ -54,7 +54,8 @@ type parserTests []struct{
 }
 
 func testParser(t *testing.T, r io.Reader, tests parserTests) {
-	p := newParser(r)
+	keys := make(map[string]interface{})
+	p := newParser(r, keys)
 	err := p.run()
 
 	if err != nil {
