@@ -37,7 +37,7 @@ func Test_parseKeysExample(t *testing.T) {
 }
 
 func Test_parseGroupsExample(t *testing.T) {
-	tests := parserTests {
+	tests := parserTests{
 		{"title", "TOML Example"},
 		{"user.name", "Tom Jones"},
 		{"user.github.nickname", "TJ"},
@@ -48,8 +48,8 @@ func Test_parseGroupsExample(t *testing.T) {
 	testParser(t, strings.NewReader(Groups), tests)
 }
 
-type parserTests []struct{
-	key string
+type parserTests []struct {
+	key   string
 	value interface{}
 }
 
@@ -61,7 +61,6 @@ func testParser(t *testing.T, r io.Reader, tests parserTests) {
 	if err != nil {
 		t.Fatalf("run() returned unexpected error: %v", err)
 	}
-
 
 	for _, tt := range tests {
 		if p.tree[tt.key] != tt.value {
