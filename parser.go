@@ -2,7 +2,6 @@ package toto
 
 import (
 	"io"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -32,7 +31,6 @@ func (p *parser) run() (err error) {
 			// EOF reached
 			break
 		}
-		log.Printf("Type = %d; value = %s\n", tok.tokenType, tok.value)
 
 		switch tok.tokenType {
 		case tokKey:
@@ -101,7 +99,6 @@ func (p *parser) keyValue(key string) (interface{}, error) {
 }
 
 func (p *parser) arrayValue() ([]interface{}, error) {
-	log.Println("Parsing array")
 	value := make([]interface{}, 0)
 
 	t, err := p.lexer.nextToken()
@@ -173,7 +170,6 @@ var floatValue = regexp.MustCompile(`^[0-9]+.[0-9]+$`)
 var iso8601 = "2006-01-02T15:04:05Z"
 
 func numericValue(v string) (interface{}, error) {
-	log.Println(v)
 	if intValue.MatchString(v) {
 		return strconv.ParseInt(v, 10, 64)
 	}

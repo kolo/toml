@@ -1,7 +1,6 @@
 package toto
 
 import (
-	"log"
 	"os"
 )
 
@@ -31,8 +30,6 @@ func Parse(path string) (conf *Conf, err error) {
 	if err != nil {
 		return nil, err
 	}
-
-	log.Printf("%v\n", conf.values)
 
 	return
 }
