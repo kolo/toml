@@ -17,6 +17,7 @@ func Test_valueMethods(t *testing.T) {
 		"title": "TOML Example",
 		"database.connection_max": connection_max,
 		"database.enabled": true,
+		"clients.hosts": []string{"alpha", "beta"},
 	}
 
 	if v := conf.String("title"); v != results["title"] {
@@ -28,9 +29,13 @@ func Test_valueMethods(t *testing.T) {
 	}
 
 	if v := conf.Bool("database.enabled"); v != results["database.enabled"] {
-		t.Fatalf("database.enabled is %v, though expected %v", v, results["databas.enabled"])
+		t.Fatalf("database.enabled is %v, though expected %v", v, results["database.enabled"])
 	}
 
+	v := conf.Slice("clients.hosts")
+	if v == nil {
+		t.Fatal("clients.hosts is nil, though expected %v", results["clients.hosts"])
+	}
 }
 
 func Test_accessToUndefinedKeys(t *testing.T) {
@@ -54,4 +59,7 @@ func Test_accessToUndefinedKeys(t *testing.T) {
 		t.Fatal("undefined.bool key should be empty")
 	}
 
+	if v := conf.Slice("undefined.slice"); v != nil {
+		t.Fatal("undefined.slice key should be nil")
+	}
 }

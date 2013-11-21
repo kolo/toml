@@ -34,6 +34,14 @@ func (c *Conf) Bool(key string) bool {
 	}
 }
 
+func (c *Conf) Slice(key string) []interface{} {
+	if v, ok := c.values[key]; ok {
+		return v.([]interface{})
+	} else {
+		return nil
+	}
+}
+
 func newConf() *Conf {
 	return &Conf{
 		values: make(map[string]interface{}),
