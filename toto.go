@@ -8,8 +8,12 @@ type Conf struct {
 	values map[string]interface{}
 }
 
+func (c *Conf) Get(key string) interface{} {
+	return c.values[key]
+}
+
 func (c *Conf) String(key string) string {
-	if v, ok := c.values[key]; ok {
+	if v := c.Get(key); v != nil {
 		return v.(string)
 	} else {
 		return ""
@@ -17,7 +21,7 @@ func (c *Conf) String(key string) string {
 }
 
 func (c *Conf) Int(key string) int64 {
-	if v, ok := c.values[key]; ok {
+	if v := c.Get(key); v != nil {
 		return v.(int64)
 	} else {
 		var zero int64
@@ -26,7 +30,7 @@ func (c *Conf) Int(key string) int64 {
 }
 
 func (c *Conf) Bool(key string) bool {
-	if v, ok := c.values[key]; ok {
+	if v := c.Get(key); v != nil {
 		return v.(bool)
 	} else {
 		var boolean bool
@@ -35,7 +39,7 @@ func (c *Conf) Bool(key string) bool {
 }
 
 func (c *Conf) Slice(key string) []interface{} {
-	if v, ok := c.values[key]; ok {
+	if v := c.Get(key); v != nil {
 		return v.([]interface{})
 	} else {
 		return nil
