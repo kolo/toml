@@ -1,4 +1,4 @@
-package toto
+package toml
 
 import (
 	"strings"
